@@ -9,7 +9,7 @@
 import datetime
 
 from fetch_cheongyak import fetch_all_notices, fetch_all_remainder_notices
-from filter import collect_events
+from filter import collect_candidate_events, passes_area_filter
 from state import load_notified_ids, save_notified_ids
 from notify_kakao import send_message, build_message
 
@@ -25,9 +25,12 @@ def main() -> None:
 
     main_notices = fetch_all_notices()
     remainder_notices = fetch_all_remainder_notices()
-    events = collect_events(main_notices, remainder_notices)
+    candidate_events = collect_candidate_events(main_notices, remainder_notices)
 
-    matching_today = [e for e in events if (e["start_date"] - today).days == target_offset]
+    # 먼저 날짜로 걸러낸다 (API 호출 없는 계산). 전용면적 확인(API 호출)은
+    # 오늘/내일 접수인 소수의 후보에 대해서만, 그다음에 한다.
+    matching_today = [e for e in candidate_events if (e["start_date"] - today).days == target_offset]
+    matching_today = [e for e in matching_today if passes_area_filter(e)]
 
     if not matching_today:
         if is_evening_run:
