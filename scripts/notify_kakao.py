@@ -56,6 +56,5 @@ def build_message(event: dict) -> str:
     type_label = event["type_label"]
     start = event["start_date"].isoformat()
     end = event["end_date"].isoformat()
-    period = start if start == end else f"{start} ~ {end}"
     url = notice.get("PBLANC_URL") or "https://www.applyhome.co.kr"
-    return f"[청약알림] {type_label}\n{name} ({region})\n접수: {period}\n{url}"
+    return f"[청약알림] {type_label}\n{name} ({region})\n접수기간: {start}~{end}\n{url}"
