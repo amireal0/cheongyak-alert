@@ -1,0 +1,41 @@
+name: 청약 알림 체크
+
+on:
+  schedule:
+    # cron은 UTC 기준. KST = UTC+9
+    # 매일 08:30 KST (당일 아침) -> 전날 23:30 UTC
+    - cron: "30 23 * * *"
+    # 매일 20:00 KST (전날 저녁) -> 당일 11:00 UTC
+    - cron: "0 11 * * *"
+  workflow_dispatch: {}
+
+permissions:
+  contents: write
+
+jobs:
+  check:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: actions/setup-python@v5
+        with:
+          python-version: "3.12"
+
+      - run: pip install -r requirements.txt
+
+      - name: 청약 공고 확인 및 알림 발송
+        env:
+          DATA_GO_KR_API_KEY: ${{ secrets.DATA_GO_KR_API_KEY }}
+          KAKAO_REST_API_KEY: ${{ secrets.KAKAO_REST_API_KEY }}
+          KAKAO_REFRESH_TOKEN: ${{ secrets.KAKAO_REFRESH_TOKEN }}
+          KAKAO_CLIENT_SECRET: ${{ secrets.KAKAO_CLIENT_SECRET }}
+        run: python scripts/main.py
+
+      - name: 알림 이력(state.json) 커밋
+        run: |
+          git config user.name "cheongyak-bot"
+          git config user.email "actions@github.com"
+          git add state.json
+          git diff --cached --quiet || git commit -m "chore: update notified state"
+          git push
