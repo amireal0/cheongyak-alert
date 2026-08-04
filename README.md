@@ -146,7 +146,10 @@ python scripts/main.py
   포함하지 않습니다.**
 - `getAPTLttotPblancMdl`: 공고별 주택형 상세. `HOUSE_TY` 필드에 전용면적이
   들어있습니다 (예: `"084.9165A"` → 84.9165㎡, 끝에 모델 구분 알파벳이
-  붙기도 함). `filter.py`가 공고마다 이 API를 추가 호출해 전용면적을 확인합니다.
+  붙기도 함). 공고마다 이 API를 추가로 호출해야 하는데, 호출 수를 줄이기
+  위해 `main.py`가 **오늘/내일 접수인 공고로 먼저 날짜를 거른 뒤** 그
+  소수의 후보에 대해서만 이 API를 호출하도록 순서를 맞춰뒀습니다
+  (`filter.py`의 `collect_candidate_events` → `passes_area_filter` 순).
 - `getRemndrLttotPblancDetail`: 무순위/불법행위재공급 공고. 같은 API가
   `HOUSE_SECD_NM` 값("무순위" / "불법행위 재공급")으로 두 유형을 함께
   제공합니다. 접수기간은 `SUBSCRPT_RCEPT_BGNDE`/`SUBSCRPT_RCEPT_ENDDE`.
