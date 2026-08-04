@@ -60,31 +60,10 @@ def _event_block(event: dict) -> str:
     return f"[{type_label}] {name} ({region})\n접수기간: {start}~{end}\n{url}"
 
 
-def build_messages(events: list[dict], max_chars: int = 900) -> list[str]:
-    """조건에 맞는 공고 이벤트들을 하나(보통 경우) 또는 여러 개(많이 몰릴 때)의
-    메시지로 묶는다. 카카오 텍스트 템플릿에 실측된 글자수 제한은 없었지만
-    (395자 정상 수신 확인됨), 공고가 많이 몰리는 날 메시지가 지나치게
-    길어지는 걸 막기 위해 청크당 대략 max_chars 이내로 나눈다.
+def build_message(events: list[dict]) -> str:
+    """한 회차에 조건에 맞은 공고 이벤트를 모두 하나의 메시지로 묶는다.
+    카카오 텍스트 템플릿에 실측된 글자수 제한은 없음을 확인함(395자 정상 수신).
     """
-    if not events:
-        return []
-
+    header = f"[청약알림] 조건에 맞는 공고 {len(events)}건"
     blocks = [_event_block(e) for e in events]
-    chunks: list[list[str]] = []
-    current: list[str] = []
-    current_len = 0
-    for block in blocks:
-        if current and current_len + len(block) > max_chars:
-            chunks.append(current)
-            current, current_len = [], 0
-        current.append(block)
-        current_len += len(block) + 2
-    chunks.append(current)
-
-    messages = []
-    for i, chunk in enumerate(chunks, start=1):
-        header = f"[청약알림] 조건에 맞는 공고 {len(events)}건"
-        if len(chunks) > 1:
-            header += f" ({i}/{len(chunks)})"
-        messages.append(header + "\n\n" + "\n\n".join(chunk))
-    return messages
+    return header + "\n\n" + "\n\n".join(blocks)

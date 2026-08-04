@@ -2,14 +2,14 @@
 당일 아침에 알림을 보낸다. 워크플로우가 하루 두 번(08:30, 20:00 KST) 실행되는
 것을 전제로, 현재 시각이 오후(>=14시)면 "내일이 접수 시작일인 것"을 저녁
 알림으로, 오전이면 "오늘이 접수 시작일인 것"을 아침 알림으로 보낸다.
-한 번에 여러 건이 해당되면 한 메시지(많이 몰리면 여러 메시지)에 모두 담는다.
+한 회차에 여러 건이 해당되더라도 항상 메시지 하나로 모아 보낸다.
 """
 import datetime
 
 from fetch_cheongyak import fetch_all_notices, fetch_all_remainder_notices
 from filter import collect_events
 from state import load_notified_ids, save_notified_ids
-from notify_kakao import send_message, build_messages
+from notify_kakao import send_message, build_message
 
 KST_OFFSET = datetime.timedelta(hours=9)
 
@@ -44,8 +44,7 @@ def main() -> None:
         return
 
     events_to_send = [event for _, event in to_send]
-    for message in build_messages(events_to_send):
-        send_message(message)
+    send_message(build_message(events_to_send))
 
     for key, _ in to_send:
         notified_ids.add(key)
