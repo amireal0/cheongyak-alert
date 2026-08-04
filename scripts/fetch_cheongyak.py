@@ -18,12 +18,18 @@ https://www.data.go.kr/data/15098547/openapi.do
 두 API 모두 odcloud 플랫폼(uddi 3.0) 응답 포맷을 사용:
   {"data": [...], "page":.., "perPage":.., "matchCount":.., "totalCount":..}
 날짜 범위 등 조건 검색은 `cond[FIELD::OP]=value` 형태의 쿼리 파라미터로 지정한다
-(OP: EQ, GTE, LTE 등). 서비스키는 발급받은 형태(인코딩/디코딩) 그대로
-serviceKey 파라미터에 넣으면 된다.
+(OP: EQ, GTE, LTE 등).
+
+data.go.kr은 서비스키를 "인코딩된 키"(URL-safe하게 이미 퍼센트 인코딩된 형태,
+예: ...Pe8W7%2B1fV...)와 "디코딩된 키"(원본, 예: ...Pe8W7+1fV...) 두 가지로
+제공한다. requests의 params=는 값을 자동으로 퍼센트 인코딩하므로, 이미
+인코딩된 키를 그대로 넘기면 %2B가 %252B로 이중 인코딩되어 인증이 깨진다.
+그래서 항상 한 번 unquote한 뒤 넘겨 어느 형태의 키를 넣어도 동작하게 한다.
 """
 import os
 import re
 from datetime import date, timedelta
+from urllib.parse import unquote
 
 import requests
 
@@ -31,7 +37,9 @@ BASE_URL = "https://api.odcloud.kr/api/ApplyhomeInfoDetailSvc/v1"
 
 
 def _request(operation: str, params: dict) -> dict:
-    api_key = os.environ["DATA_GO_KR_API_KEY"]
+    # 인코딩된 키/디코딩된 키 둘 다 지원하기 위해 항상 한 번 디코딩한 뒤
+    # requests가 다시 인코딩하도록 한다 (이중 인코딩 방지).
+    api_key = unquote(os.environ["DATA_GO_KR_API_KEY"])
     resp = requests.get(
         f"{BASE_URL}/{operation}",
         params={**params, "serviceKey": api_key},
