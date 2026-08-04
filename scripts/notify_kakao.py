@@ -29,12 +29,12 @@ def _refresh_access_token() -> str:
     return resp.json()["access_token"]
 
 
-def send_message(text: str) -> None:
+def send_message(text: str, url: str = "https://www.applyhome.co.kr") -> None:
     access_token = _refresh_access_token()
     template = {
         "object_type": "text",
         "text": text[:200],
-        "link": {"web_url": "https://www.applyhome.co.kr", "mobile_web_url": "https://www.applyhome.co.kr"},
+        "link": {"web_url": url, "mobile_web_url": url},
     }
     resp = requests.post(
         SEND_URL,
@@ -45,10 +45,17 @@ def send_message(text: str) -> None:
     resp.raise_for_status()
 
 
-def build_message(notices: list[dict]) -> str:
-    lines = [f"[청약 알림] 조건에 맞는 공고 {len(notices)}건"]
-    for n in notices[:10]:
-        name = n.get("HOUSE_NM") or "이름 미상"
-        area = n.get("SUBSCRPT_AREA_CODE_NM") or ""
-        lines.append(f"- {name} ({area})")
-    return "\n".join(lines)
+def build_message(event: dict) -> str:
+    """공급유형 하나(특별공급/1순위/2순위/무순위/불법행위재공급)에 대한 알림 문구.
+
+    형식: 공급유형 구분 / 주택명(지역) / 청약접수일 / 접수 사이트.
+    """
+    notice = event["notice"]
+    name = notice.get("HOUSE_NM") or "이름 미상"
+    region = notice.get("SUBSCRPT_AREA_CODE_NM") or ""
+    type_label = event["type_label"]
+    start = event["start_date"].isoformat()
+    end = event["end_date"].isoformat()
+    period = start if start == end else f"{start} ~ {end}"
+    url = notice.get("PBLANC_URL") or "https://www.applyhome.co.kr"
+    return f"[청약알림] {type_label}\n{name} ({region})\n접수: {period}\n{url}"
