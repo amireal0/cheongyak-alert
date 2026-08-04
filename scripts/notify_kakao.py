@@ -33,7 +33,7 @@ def send_message(text: str, url: str = "https://www.applyhome.co.kr") -> None:
     access_token = _refresh_access_token()
     template = {
         "object_type": "text",
-        "text": text[:200],
+        "text": text,
         "link": {"web_url": url, "mobile_web_url": url},
     }
     resp = requests.post(
@@ -45,8 +45,8 @@ def send_message(text: str, url: str = "https://www.applyhome.co.kr") -> None:
     resp.raise_for_status()
 
 
-def build_message(event: dict) -> str:
-    """공급유형 하나(특별공급/1순위/2순위/무순위/불법행위재공급)에 대한 알림 문구.
+def _event_block(event: dict) -> str:
+    """공급유형 하나(특별공급/1순위/2순위/무순위/불법행위재공급)에 대한 문구 블록.
 
     형식: 공급유형 구분 / 주택명(지역) / 청약접수일 / 접수 사이트.
     """
@@ -57,4 +57,34 @@ def build_message(event: dict) -> str:
     start = event["start_date"].isoformat()
     end = event["end_date"].isoformat()
     url = notice.get("PBLANC_URL") or "https://www.applyhome.co.kr"
-    return f"[청약알림] {type_label}\n{name} ({region})\n접수기간: {start}~{end}\n{url}"
+    return f"[{type_label}] {name} ({region})\n접수기간: {start}~{end}\n{url}"
+
+
+def build_messages(events: list[dict], max_chars: int = 900) -> list[str]:
+    """조건에 맞는 공고 이벤트들을 하나(보통 경우) 또는 여러 개(많이 몰릴 때)의
+    메시지로 묶는다. 카카오 텍스트 템플릿에 실측된 글자수 제한은 없었지만
+    (395자 정상 수신 확인됨), 공고가 많이 몰리는 날 메시지가 지나치게
+    길어지는 걸 막기 위해 청크당 대략 max_chars 이내로 나눈다.
+    """
+    if not events:
+        return []
+
+    blocks = [_event_block(e) for e in events]
+    chunks: list[list[str]] = []
+    current: list[str] = []
+    current_len = 0
+    for block in blocks:
+        if current and current_len + len(block) > max_chars:
+            chunks.append(current)
+            current, current_len = [], 0
+        current.append(block)
+        current_len += len(block) + 2
+    chunks.append(current)
+
+    messages = []
+    for i, chunk in enumerate(chunks, start=1):
+        header = f"[청약알림] 조건에 맞는 공고 {len(events)}건"
+        if len(chunks) > 1:
+            header += f" ({i}/{len(chunks)})"
+        messages.append(header + "\n\n" + "\n\n".join(chunk))
+    return messages
