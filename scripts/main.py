@@ -25,7 +25,7 @@ from state import load_notified_ids, save_notified_ids
 from notify_kakao import send_message, build_message
 
 KST_OFFSET = datetime.timedelta(hours=9)
-MORNING_CRON = "37 23 * * *"
+MORNING_CRON = "18 0 * * *"  # (임시 테스트) 09:18 KST — 확인 끝나면 "37 23 * * *"로 되돌릴 것
 EVENING_CRON = "13 11 * * *"
 
 
