@@ -62,10 +62,10 @@ def main() -> None:
     matching_today = [e for e in matching_today if passes_area_filter(e)]
 
     if not matching_today:
-        if is_evening_run:
-            _notify_no_notices(represented_date)
-        else:
-            print("오늘 접수 시작인 공고 없음")
+        # (임시 테스트) 원래는 저녁 실행에서만 "없음" 안내를 보냈는데,
+        # 자동 알림 동작 확인을 위해 이번엔 아침 실행에서도 보내도록 함.
+        # 확인 끝나면 아래를 "if is_evening_run: ... else: print(...)"로 되돌릴 것.
+        _notify_no_notices(is_evening_run, represented_date)
         return
 
     notified_ids = load_notified_ids()
@@ -91,20 +91,27 @@ def main() -> None:
         print(f"  - {event['notice'].get('HOUSE_NM')} / {event['type_label']}")
 
 
-def _notify_no_notices(represented_date: datetime.date) -> None:
-    """저녁 실행에서 내일 접수 시작인, 조건에 맞는 공고가 하나도 없을 때 안내."""
-    tomorrow = represented_date + datetime.timedelta(days=1)
-    empty_key = f"no-notices:{tomorrow.isoformat()}"
+def _notify_no_notices(is_evening_run: bool, represented_date: datetime.date) -> None:
+    """접수 시작인, 조건에 맞는 공고가 하나도 없을 때 안내."""
+    if is_evening_run:
+        target_date = represented_date + datetime.timedelta(days=1)
+        when_label = "내일"
+        kind = "evening_before"
+    else:
+        target_date = represented_date
+        when_label = "오늘"
+        kind = "morning_of"
+    empty_key = f"no-notices:{kind}:{target_date.isoformat()}"
 
     notified_ids = load_notified_ids()
     if empty_key in notified_ids:
-        print(f"이미 안내함: 내일({tomorrow.isoformat()}) 해당 공고 없음")
+        print(f"이미 안내함: {when_label}({target_date.isoformat()}) 해당 공고 없음")
         return
 
-    send_message(f"[청약알림] 내일({tomorrow.isoformat()}) 접수 시작인, 조건에 맞는 서울 공고가 없습니다.")
+    send_message(f"[청약알림] {when_label}({target_date.isoformat()}) 접수 시작인, 조건에 맞는 서울 공고가 없습니다.")
     notified_ids.add(empty_key)
     save_notified_ids(notified_ids)
-    print(f"알림 발송: 내일({tomorrow.isoformat()}) 해당 공고 없음")
+    print(f"알림 발송: {when_label}({target_date.isoformat()}) 해당 공고 없음")
 
 
 if __name__ == "__main__":
