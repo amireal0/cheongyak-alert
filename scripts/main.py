@@ -2,7 +2,8 @@
 당일 아침에 알림을 보낸다. 워크플로우가 하루 두 번(08:37, 20:13 KST 근처) 실행되는
 것을 전제로, 어느 스케줄(cron)이 이 실행을 트리거했는지로 아침/저녁을 판단해서
 저녁 실행이면 "내일이 접수 시작일인 것"을, 아침 실행이면 "오늘이 접수 시작일인
-것"을 알린다.
+것"을 알린다. 해당하는 공고가 하나도 없어도, 아침/저녁 모두 "없다"는 메시지를
+보낸다.
 
 GitHub Actions의 schedule 트리거는 부하가 몰리면 몇 시간씩 지연될 수 있어서
 (실제로 저녁 실행이 다음날 새벽으로 지연된 적이 있음), 실행된 시각(시계)만으로
@@ -12,9 +13,7 @@ GitHub Actions의 schedule 트리거는 부하가 몰리면 몇 시간씩 지연
 현재 시각으로 판단한다. 자정을 넘겨서까지 지연된 저녁 실행이면 "오늘 날짜"도
 하루 전(원래 저녁이었던 날)으로 보정한다.
 
-한 회차에 여러 건이 해당되더라도 항상 메시지 하나로 모아 보낸다. 저녁
-실행에서 내일 접수 시작인 공고가 하나도 없으면, 그 사실을 알리는
-메시지를 보낸다 (아침 실행에서는 보내지 않음).
+한 회차에 여러 건이 해당되더라도 항상 메시지 하나로 모아 보낸다.
 """
 import datetime
 import os
@@ -25,7 +24,7 @@ from state import load_notified_ids, save_notified_ids
 from notify_kakao import send_message, build_message
 
 KST_OFFSET = datetime.timedelta(hours=9)
-MORNING_CRON = "18 0 * * *"  # (임시 테스트) 09:18 KST — 확인 끝나면 "37 23 * * *"로 되돌릴 것
+MORNING_CRON = "37 23 * * *"
 EVENING_CRON = "13 11 * * *"
 
 
@@ -62,9 +61,6 @@ def main() -> None:
     matching_today = [e for e in matching_today if passes_area_filter(e)]
 
     if not matching_today:
-        # (임시 테스트) 원래는 저녁 실행에서만 "없음" 안내를 보냈는데,
-        # 자동 알림 동작 확인을 위해 이번엔 아침 실행에서도 보내도록 함.
-        # 확인 끝나면 아래를 "if is_evening_run: ... else: print(...)"로 되돌릴 것.
         _notify_no_notices(is_evening_run, represented_date)
         return
 
