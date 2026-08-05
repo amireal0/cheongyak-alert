@@ -3,10 +3,12 @@ name: 청약 알림 체크
 on:
   schedule:
     # cron은 UTC 기준. KST = UTC+9
-    # 매일 08:30 KST (당일 아침) -> 전날 23:30 UTC
-    - cron: "30 23 * * *"
-    # 매일 20:00 KST (전날 저녁) -> 당일 11:00 UTC
-    - cron: "0 11 * * *"
+    # 정각/30분같이 몰리는 시각은 GitHub Actions 스케줄이 지연되기 쉬워서
+    # (공식 권장사항) 일부러 몇 분 어긋난 시각을 씀.
+    # 매일 08:37 KST 근처(당일 아침) -> 전날 23:37 UTC
+    - cron: "37 23 * * *"
+    # 매일 20:13 KST 근처(전날 저녁) -> 당일 11:13 UTC
+    - cron: "13 11 * * *"
   workflow_dispatch: {}
 
 permissions:
@@ -30,6 +32,7 @@ jobs:
           KAKAO_REST_API_KEY: ${{ secrets.KAKAO_REST_API_KEY }}
           KAKAO_REFRESH_TOKEN: ${{ secrets.KAKAO_REFRESH_TOKEN }}
           KAKAO_CLIENT_SECRET: ${{ secrets.KAKAO_CLIENT_SECRET }}
+          GITHUB_EVENT_SCHEDULE: ${{ github.event.schedule }}
         run: python scripts/main.py
 
       - name: 알림 이력(state.json) 커밋
