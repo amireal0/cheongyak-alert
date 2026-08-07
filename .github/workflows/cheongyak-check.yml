@@ -9,7 +9,13 @@ on:
     - cron: "37 23 * * *"
     # 매일 20:13 KST 근처(전날 저녁) -> 당일 11:13 UTC
     - cron: "13 11 * * *"
-  workflow_dispatch: {}
+  workflow_dispatch:
+    inputs:
+      kind:
+        description: "morning(오늘) 또는 evening(내일) 중 어느 회차인지. cron-job.org 등 외부에서 호출할 때 명시. 비우면 실행 시각(14시 기준)으로 추정."
+        required: false
+        type: choice
+        options: ["", "morning", "evening"]
 
 permissions:
   contents: write
@@ -33,6 +39,7 @@ jobs:
           KAKAO_REFRESH_TOKEN: ${{ secrets.KAKAO_REFRESH_TOKEN }}
           KAKAO_CLIENT_SECRET: ${{ secrets.KAKAO_CLIENT_SECRET }}
           GITHUB_EVENT_SCHEDULE: ${{ github.event.schedule }}
+          GITHUB_EVENT_INPUTS_KIND: ${{ github.event.inputs.kind }}
         run: python scripts/main.py
 
       - name: 알림 이력(state.json) 커밋
