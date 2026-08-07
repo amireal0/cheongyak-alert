@@ -1,17 +1,24 @@
 """공급유형(특별공급/1순위/2순위/무순위/불법행위재공급)별 접수일 전날 저녁 및
-당일 아침에 알림을 보낸다. 워크플로우가 하루 두 번(08:37, 20:13 KST 근처) 실행되는
-것을 전제로, 어느 스케줄(cron)이 이 실행을 트리거했는지로 아침/저녁을 판단해서
-저녁 실행이면 "내일이 접수 시작일인 것"을, 아침 실행이면 "오늘이 접수 시작일인
-것"을 알린다. 해당하는 공고가 하나도 없어도, 아침/저녁 모두 "없다"는 메시지를
-보낸다.
+당일 아침에 알림을 보낸다. 하루 두 번(08:37, 20:13 KST 근처) 실행되는 것을
+전제로, 저녁 실행이면 "내일이 접수 시작일인 것"을, 아침 실행이면 "오늘이
+접수 시작일인 것"을 알린다. 해당하는 공고가 하나도 없어도, 아침/저녁 모두
+"없다"는 메시지를 보낸다.
+
+아침/저녁 판단은 다음 순서로 한다:
+1. GITHUB_EVENT_INPUTS_KIND ("morning"/"evening") — workflow_dispatch를 외부
+   (예: cron-job.org)에서 호출할 때 명시적으로 넘기는 값. 어떤 트리거가 이
+   실행을 걸었는지 실행 시각과 무관하게 정확히 알 수 있어 가장 신뢰도가 높다.
+2. GITHUB_EVENT_SCHEDULE (트리거한 cron 문자열) — GitHub Actions 자체
+   schedule 트리거로 실행된 경우에만 채워짐.
+3. 위 둘 다 없으면(예: GitHub UI에서 입력 없이 수동 실행) 현재 시각(14시
+   기준)으로 추정.
 
 GitHub Actions의 schedule 트리거는 부하가 몰리면 몇 시간씩 지연될 수 있어서
 (실제로 저녁 실행이 다음날 새벽으로 지연된 적이 있음), 실행된 시각(시계)만으로
 아침/저녁을 판단하면 지연된 저녁 실행이 아침으로 잘못 분류되는 문제가 있었다.
-그래서 워크플로우가 넘겨주는 GITHUB_EVENT_SCHEDULE(트리거한 cron 문자열)을
-우선 사용하고, workflow_dispatch처럼 스케줄 정보가 없는 수동 실행에서만
-현재 시각으로 판단한다. 자정을 넘겨서까지 지연된 저녁 실행이면 "오늘 날짜"도
-하루 전(원래 저녁이었던 날)으로 보정한다.
+1·2번 값이 있으면 시계와 무관하게 정확히 판단하므로 이 문제가 없다. 자정을
+넘겨서까지 지연된 저녁 실행이면 "오늘 날짜"도 하루 전(원래 저녁이었던 날)으로
+보정한다.
 
 한 회차에 여러 건이 해당되더라도 항상 메시지 하나로 모아 보낸다.
 """
@@ -29,12 +36,19 @@ EVENING_CRON = "13 11 * * *"
 
 
 def _is_evening_run(now: datetime.datetime) -> bool:
+    kind_input = os.environ.get("GITHUB_EVENT_INPUTS_KIND")
+    if kind_input == "evening":
+        return True
+    if kind_input == "morning":
+        return False
+
     schedule = os.environ.get("GITHUB_EVENT_SCHEDULE")
     if schedule == EVENING_CRON:
         return True
     if schedule == MORNING_CRON:
         return False
-    # workflow_dispatch 등 스케줄 정보가 없으면 현재 시각으로 판단
+
+    # 위 둘 다 없으면(예: 입력 없는 수동 실행) 현재 시각으로 판단
     return now.hour >= 14
 
 
