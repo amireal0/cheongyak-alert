@@ -25,7 +25,14 @@ def _refresh_access_token() -> str:
         data["client_secret"] = client_secret
 
     resp = requests.post(TOKEN_URL, data=data, timeout=15)
-    resp.raise_for_status()
+    if not resp.ok:
+        # 카카오는 4xx에도 {"error": "...", "error_description": "..."} 형태로
+        # 구체적 사유를 내려준다 (예: 리프레시 토큰 만료/무효화). raise_for_status()만
+        # 쓰면 이 사유가 로그에 안 남아서, 다음에 또 실패했을 때 원인 파악이 오래
+        # 걸린다. get_kakao_token.py로 KAKAO_REFRESH_TOKEN을 재발급해야 한다.
+        raise requests.exceptions.HTTPError(
+            f"카카오 토큰 갱신 실패 ({resp.status_code}): {resp.text}", response=resp
+        )
     return resp.json()["access_token"]
 
 
