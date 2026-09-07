@@ -5,6 +5,10 @@
 등록해두어야 합니다. 앱의 "카카오 로그인 > 보안" 설정에서 Client Secret이
 활성화되어 있다면 KAKAO_CLIENT_SECRET 환경변수/시크릿도 등록해야 합니다
 (비활성화된 앱이라면 비워둬도 됩니다).
+
+카카오는 access_token 갱신 시 refresh_token의 유효기간이 얼마 안 남았으면
+새 refresh_token도 함께 내려준다. 이를 감지해서 GitHub Secret에 자동으로
+반영하면(rotate_kakao_token.py) 수동 재발급 없이 토큰이 스스로 갱신된다.
 """
 import json
 import os
@@ -33,7 +37,19 @@ def _refresh_access_token() -> str:
         raise requests.exceptions.HTTPError(
             f"카카오 토큰 갱신 실패 ({resp.status_code}): {resp.text}", response=resp
         )
-    return resp.json()["access_token"]
+
+    payload = resp.json()
+    new_refresh_token = payload.get("refresh_token")
+    if new_refresh_token and new_refresh_token != os.environ.get("KAKAO_REFRESH_TOKEN"):
+        try:
+            from rotate_kakao_token import update_refresh_token_secret
+            update_refresh_token_secret(new_refresh_token)
+        except Exception as exc:
+            # 자동 저장이 실패해도 이번 알림 발송 자체는 막지 않는다. 다만 이러면
+            # 다음 만료 때 수동 재발급이 다시 필요해질 수 있으니 로그에 남긴다.
+            print(f"새 리프레시 토큰 자동 저장 실패(수동 재발급 필요할 수 있음): {exc}")
+
+    return payload["access_token"]
 
 
 def send_message(text: str, url: str = "https://www.applyhome.co.kr") -> None:
