@@ -44,11 +44,23 @@
    - `KAKAO_REFRESH_TOKEN`
    - `KAKAO_CLIENT_SECRET` (Client Secret을 쓰는 경우에만)
    - `DATA_GO_KR_API_KEY`
+   - `GH_SECRETS_PAT` (아래 refresh_token 자동 갱신 설명 참고)
 
 카카오 access_token은 6시간, refresh_token은 2개월(갱신 시 연장)마다
-만료됩니다. `scripts/notify_kakao.py`는 실행 시마다 refresh_token으로
-access_token을 새로 발급받으므로, refresh_token만 주기적으로
-(2개월 내) 갱신해주면 됩니다.
+만료됩니다. `scripts/notify_kakao.py`가 access_token을 갱신할 때 카카오가
+새 refresh_token을 함께 내려주면(유효기간이 얼마 안 남았을 때), 이를 감지해
+`scripts/rotate_kakao_token.py`가 GitHub Secret(`KAKAO_REFRESH_TOKEN`)에
+자동으로 반영합니다. 그래서 워크플로우가 계속 정상적으로 도는 한
+refresh_token을 수동으로 재발급할 필요가 없습니다.
+
+이 자동 갱신을 쓰려면 이 저장소의 **Secrets: Read and write** 권한만 가진
+fine-grained PAT를 하나 발급해서 `GH_SECRETS_PAT` 시크릿으로 등록해야 합니다
+(GitHub Settings > Developer settings > Personal access tokens >
+Fine-grained tokens, Repository access는 이 저장소만, Permissions는
+Secrets만 Read and write). 이 PAT도 만료일이 있지만, GitHub가 만료 전에
+이메일로 알려주므로 카카오 토큰처럼 예고 없이 조용히 끊기지 않습니다.
+`GH_SECRETS_PAT`을 등록하지 않으면 자동 갱신 없이 예전처럼 2개월마다
+수동으로 재발급해야 합니다 (동작에는 지장 없음, 로그에 안내 메시지만 남음).
 
 ## 구조
 
@@ -59,6 +71,7 @@ scripts/
   state.py                # 이미 알림 보낸 공고 ID 관리 (state.json)
   notify_kakao.py          # 카카오 "나에게 보내기" 발송
   get_kakao_token.py        # 카카오 최초 access_token/refresh_token 발급 (1회 실행)
+  rotate_kakao_token.py       # 갱신된 refresh_token을 GitHub Secret에 자동 반영
   main.py                    # 위 단계를 순서대로 실행
 state.json                # 알림 이력 (GitHub Actions가 커밋으로 관리)
 .github/workflows/

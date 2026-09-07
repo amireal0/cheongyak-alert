@@ -40,6 +40,7 @@ jobs:
           KAKAO_CLIENT_SECRET: ${{ secrets.KAKAO_CLIENT_SECRET }}
           GITHUB_EVENT_SCHEDULE: ${{ github.event.schedule }}
           GITHUB_EVENT_INPUTS_KIND: ${{ github.event.inputs.kind }}
+          GH_SECRETS_PAT: ${{ secrets.GH_SECRETS_PAT }}
         run: python scripts/main.py
 
       - name: 알림 이력(state.json) 커밋
