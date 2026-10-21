@@ -3,7 +3,7 @@
 청약홈(한국부동산원) Open API에서 신규 아파트 분양 공고를 가져와,
 서울 지역 / 전용면적 30㎡~80㎡ 조건에 맞는 공고를, 공급유형별(특별공급/
 1순위/2순위/무순위/불법행위재공급) **접수일 전날 저녁 및 당일 아침**에
-카카오톡 "나에게 보내기"로 알림을 보내는 도구입니다.
+텔레그램으로 알림을 보내는 도구입니다.
 
 청약홈 Open API는 LH·SH가 공급하는 공공분양 아파트를 포함한
 전국 APT 분양 공고를 통합 제공하므로, 이 API 하나로 청약홈/LH/SH
@@ -17,50 +17,17 @@
 2. "한국부동산원_청약홈_APT 분양정보" 검색 → 활용신청 (승인은 보통 즉시~1일)
 3. 마이페이지에서 서비스키(디코딩 키) 확인
 
-### 2. 카카오 "나에게 보내기" 설정
-1. https://developers.kakao.com 에서 애플리케이션 생성
-2. 제품설정 > 카카오 로그인 활성화 ON
-3. 제품설정 > 카카오 로그인 > Redirect URI에 임의 주소 등록
-   (예: `http://localhost:5000`, 실제로 그 주소가 떠 있을 필요는 없음)
-4. 제품설정 > 카카오 로그인 > 동의항목에서 "카카오톡 메시지 전송"
-   (talk_message) 활성화
-5. 앱설정 > 앱 > 고급 > "클라이언트 시크릿"에서 "카카오 로그인" 코드의
-   활성화 상태를 확인. **ON이면 반드시 그 코드 값을 `KAKAO_CLIENT_SECRET`으로
-   준비**해야 한다 (OFF로 표시돼도 실제로는 필수로 요구되는 경우가 있었으니,
-   토큰 교환이 `invalid_client`로 실패하면 이 값을 넣어서 다시 시도할 것).
-6. 아래 명령으로 최초 1회 authorization code → access_token,
-   refresh_token 발급:
-   ```bash
-   pip install -r requirements.txt
-   python scripts/get_kakao_token.py
-   ```
-   안내에 따라 브라우저에서 로그인 URL을 열어 로그인/동의한 뒤,
-   리다이렉트된 주소의 `code=` 값을 터미널에 붙여넣으면
-   `KAKAO_REFRESH_TOKEN` 값을 출력해준다. Client Secret이 필요한
-   앱이면 실행 중 물어볼 때 같이 입력한다.
-7. 발급받은 값들을 GitHub 저장소의 Settings > Secrets and variables >
-   Actions 에 등록:
-   - `KAKAO_REST_API_KEY`
-   - `KAKAO_REFRESH_TOKEN`
-   - `KAKAO_CLIENT_SECRET` (Client Secret을 쓰는 경우에만)
+### 2. 텔레그램 봇 설정
+1. 텔레그램에서 `@BotFather` 에게 `/newbot` 으로 봇을 만들고 **봇 토큰**을 받는다.
+2. 만든 봇과 대화를 열어 아무 메시지나 보낸다 (먼저 말을 걸어야 봇이 메시지를 보낼 수 있음).
+3. 브라우저에서 `https://api.telegram.org/bot<봇토큰>/getUpdates` 를 열어
+   `"chat":{"id": ...}` 의 숫자가 **chat id** 이다.
+4. GitHub 저장소 Settings > Secrets and variables > Actions 에 등록:
+   - `TELEGRAM_BOT_TOKEN`
+   - `TELEGRAM_CHAT_ID`
    - `DATA_GO_KR_API_KEY`
-   - `GH_SECRETS_PAT` (아래 refresh_token 자동 갱신 설명 참고)
 
-카카오 access_token은 6시간, refresh_token은 2개월(갱신 시 연장)마다
-만료됩니다. `scripts/notify_kakao.py`가 access_token을 갱신할 때 카카오가
-새 refresh_token을 함께 내려주면(유효기간이 얼마 안 남았을 때), 이를 감지해
-`scripts/rotate_kakao_token.py`가 GitHub Secret(`KAKAO_REFRESH_TOKEN`)에
-자동으로 반영합니다. 그래서 워크플로우가 계속 정상적으로 도는 한
-refresh_token을 수동으로 재발급할 필요가 없습니다.
-
-이 자동 갱신을 쓰려면 이 저장소의 **Secrets: Read and write** 권한만 가진
-fine-grained PAT를 하나 발급해서 `GH_SECRETS_PAT` 시크릿으로 등록해야 합니다
-(GitHub Settings > Developer settings > Personal access tokens >
-Fine-grained tokens, Repository access는 이 저장소만, Permissions는
-Secrets만 Read and write). 이 PAT도 만료일이 있지만, GitHub가 만료 전에
-이메일로 알려주므로 카카오 토큰처럼 예고 없이 조용히 끊기지 않습니다.
-`GH_SECRETS_PAT`을 등록하지 않으면 자동 갱신 없이 예전처럼 2개월마다
-수동으로 재발급해야 합니다 (동작에는 지장 없음, 로그에 안내 메시지만 남음).
+텔레그램 봇 토큰은 만료되지 않아 주기적인 재발급이 필요 없습니다.
 
 ## 구조
 
@@ -69,9 +36,7 @@ scripts/
   fetch_cheongyak.py    # 청약홈 Open API 호출 → 신규 공고 원본 리스트
   filter.py              # 지역/전용면적 조건으로 필터링
   state.py                # 이미 알림 보낸 공고 ID 관리 (state.json)
-  notify_kakao.py          # 카카오 "나에게 보내기" 발송
-  get_kakao_token.py        # 카카오 최초 access_token/refresh_token 발급 (1회 실행)
-  rotate_kakao_token.py       # 갱신된 refresh_token을 GitHub Secret에 자동 반영
+  notify_telegram.py      # 텔레그램 봇 발송 + 메시지 문구 생성
   main.py                    # 위 단계를 순서대로 실행
 state.json                # 알림 이력 (GitHub Actions가 커밋으로 관리)
 .github/workflows/
@@ -148,9 +113,8 @@ https://www.applyhome.co.kr/...
 ```bash
 pip install -r requirements.txt
 export DATA_GO_KR_API_KEY=...
-export KAKAO_REST_API_KEY=...
-export KAKAO_REFRESH_TOKEN=...
-export KAKAO_CLIENT_SECRET=...  # Client Secret을 쓰는 경우에만
+export TELEGRAM_BOT_TOKEN=...
+export TELEGRAM_CHAT_ID=...
 python scripts/main.py
 ```
 

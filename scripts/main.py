@@ -28,7 +28,7 @@ import os
 from fetch_cheongyak import fetch_all_notices, fetch_all_remainder_notices
 from filter import collect_candidate_events, passes_area_filter
 from state import load_notified_ids, save_notified_ids
-from notify_kakao import send_message, build_message
+from notify_telegram import send_message, build_message
 
 KST_OFFSET = datetime.timedelta(hours=9)
 MORNING_CRON = "37 23 * * *"
