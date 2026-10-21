@@ -53,6 +53,12 @@ def _is_evening_run(now: datetime.datetime) -> bool:
 
 
 def main() -> None:
+    if os.environ.get("GITHUB_EVENT_INPUTS_KIND") == "test":
+        # 연결 확인용: 중복 방지·이력과 무관하게 테스트 메시지만 보낸다.
+        send_message("[청약알림] 텔레그램 연결 테스트 메시지입니다.")
+        print("테스트 메시지 발송")
+        return
+
     now = datetime.datetime.utcnow() + KST_OFFSET
     is_evening_run = _is_evening_run(now)
 
